@@ -74,6 +74,12 @@ def embed_metadata(filepath, meta):
 def download_music(url, output_dir="downloads"):
     os.makedirs(output_dir, exist_ok=True)
 
+    downloaded_files = []
+
+    def capture_filename(d):
+        if d["status"] == "finished":
+            downloaded_files.append(d["filename"])
+
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": f"{output_dir}/%(title)s.%(ext)s",
@@ -83,6 +89,7 @@ def download_music(url, output_dir="downloads"):
             "preferredquality": "192",
         }],
         "quiet": False,
+        "progress_hooks": [capture_filename],
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -90,10 +97,16 @@ def download_music(url, output_dir="downloads"):
         ydl.download([url])
 
         entries = info.get("entries", [info])
-        for entry in entries:
+        for i, entry in enumerate(entries):
             yt_title = entry.get("title", "unknown")
             yt_artist = entry.get("artist") or entry.get("uploader", "")
-            mp3_path = os.path.join(output_dir, f"{yt_title}.mp3")
+
+            # Use actual filename from yt-dlp, just swap extension to .mp3
+            if i < len(downloaded_files):
+                base = os.path.splitext(downloaded_files[i])[0]
+                mp3_path = base + ".mp3"
+            else:
+                mp3_path = os.path.join(output_dir, f"{yt_title}.mp3")
 
             meta = get_deezer_metadata(yt_title, yt_artist) or {
                 "title": yt_title,
