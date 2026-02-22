@@ -56,6 +56,12 @@ python cek.py <YouTube or YouTube Music URL>
 ### Examples
 
 ```bash
+
+NOTE remove everything beyond '&' 
+ex
+https://music.youtube.com/watch?v=j9Sn1nFGQQ8&si=r1UuFz6aWKJFdc1M
+TO
+https://music.youtube.com/watch?v=j9Sn1nFGQQ8
 # Single track
 python cek.py "https://music.youtube.com/watch?v=..."
 
