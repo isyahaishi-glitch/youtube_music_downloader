@@ -18,11 +18,18 @@ def get_deezer_metadata(title, artist):
             return None
 
         track = tracks[0]
+        album_id = track["album"]["id"]
+        album_data = requests.get(
+            f"https://api.deezer.com/album/{album_id}",
+            timeout=10
+        ).json()
+
+        year = album_data.get("release_date", "")[:4]
         return {
             "title": track["title"],
             "artist": track["artist"]["name"],
             "album": track["album"]["title"],
-            "year": "",  # Deezer search doesn't return year, need extra call
+            "year": year,  # Deezer search doesn't return year, need extra call
             "track_number": "",
             "thumbnail": track["album"]["cover_xl"],  # high quality cover art
         }
