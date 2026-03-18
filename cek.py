@@ -29,7 +29,7 @@ def get_deezer_metadata(title, artist):
             "title": track["title"],
             "artist": track["artist"]["name"],
             "album": track["album"]["title"],
-            "year": year,  # Deezer search doesn't return year, need extra call
+            "year": year,  
             "track_number": "",
             "thumbnail": track["album"]["cover_xl"],  # high quality cover art
         }
@@ -108,7 +108,7 @@ def download_music(url, output_dir="downloads"):
             yt_title = entry.get("title", "unknown")
             yt_artist = entry.get("artist") or entry.get("uploader", "")
 
-            # Use actual filename from yt-dlp, just swap extension to .mp3
+
             if i < len(downloaded_files):
                 base = os.path.splitext(downloaded_files[i])[0]
                 mp3_path = base + ".mp3"
@@ -130,10 +130,14 @@ def download_music(url, output_dir="downloads"):
                 print(f"File not found for tagging: {mp3_path}")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python cek.py <YouTube Music URL>")
-        sys.exit(1)
+    # if len(sys.argv) < 2:
+    #     print("Usage: python cek.py <YouTube Music URL>")
+    #     sys.exit(1)
+    url = input()
 
-    print(f"Downloading: {sys.argv[1]}")
-    download_music(sys.argv[1])
+    clean = url.split("&") [0]
+    # print(f"Downloading: {sys.argv[1]}")
+    # # download_music(sys.argv[1])
+    download_music(clean)
+
     print("Done! Check the 'downloads' folder.")
