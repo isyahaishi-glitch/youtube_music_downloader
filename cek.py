@@ -2,6 +2,8 @@ import yt_dlp
 import sys
 import os
 import requests
+from flask import Flask, request, jsonify
+from flask_cors import CORS # Allows the browser to talk to the server
 
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TRCK, APIC, ID3NoHeaderError
 from mutagen.mp3 import MP3
@@ -129,15 +131,35 @@ def download_music(url, output_dir="downloads"):
             else:
                 print(f"File not found for tagging: {mp3_path}")
 
-if __name__ == "__main__":
+
+
+app = Flask(__name__)
+CORS(app) 
+
+@app.route('/data', methods=['POST'])
+def receive_data():
+    content = request.json
+    user_text = content.get('message')
+    
+    print(f"Received from HTML: {user_text}")
+    
+    # Do whatever you want with user_text here (save to file, AI processing, etc.)
+    url = user_text
+    clean = url.split("&") [0]
+    download_music(clean)
+
+    return jsonify({"status": "Success", "received": user_text})
+
+print("Done! Check the 'downloads' folder.")
+
+
+if __name__ == '__main__':
+    app.run(port=5000)
+
+# if __name__ == "__main__":
     # if len(sys.argv) < 2:
     #     print("Usage: python cek.py <YouTube Music URL>")
     #     sys.exit(1)
-    url = input()
 
-    clean = url.split("&") [0]
     # print(f"Downloading: {sys.argv[1]}")
     # # download_music(sys.argv[1])
-    download_music(clean)
-
-    print("Done! Check the 'downloads' folder.")
