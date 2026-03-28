@@ -41,7 +41,6 @@ FFmpeg is required for audio extraction. Install it for your OS:
 
 ```bash
 git clone https://github.com/yourname/yourrepo.git
-cd yourrepo
 pip install -r requirements.txt
 ```
 
