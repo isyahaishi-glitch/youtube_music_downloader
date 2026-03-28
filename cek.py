@@ -4,40 +4,144 @@ import os
 import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS # Allows the browser to talk to the server
+import musicbrainzngs
+# import ytmusicapi
 
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, TCON, TRCK, APIC, ID3NoHeaderError
 from mutagen.mp3 import MP3
 
+# from ytmusicapi import YTMusic
 
-def get_deezer_metadata(title, artist):
+# yt = YTMusic()  # no auth needed for search
+
+# def get_ytmusic_metadata(title, artist):
+#     try:
+#         results = yt.search(f"{title} {artist}", filter="songs", limit=1)
+#         if not results:
+#             return None
+        
+#         track = results[0]
+#         return {
+#             "title": track.get("title", title),
+#             "artist": track["artists"][0]["name"] if track.get("artists") else artist,
+#             "album": track["album"]["name"] if track.get("album") else "",
+#             "year": track.get("year", ""),
+#             "track_number": "",
+#             "thumbnail": track["thumbnails"][-1]["url"] if track.get("thumbnails") else None,
+#         }
+#     except Exception as e:
+#         print(f"YTMusic error: {e}")
+#         return None
+
+
+
+# def get_itunes_metadata(title, artist):
+#     try:
+#         query = f"{title} {artist}"
+#         r = requests.get(
+#             f"https://itunes.apple.com/search?term={requests.utils.quote(query)}&media=music&limit=1",
+#             timeout=10
+#         )
+#         data = r.json()
+#         results = data.get("results", [])
+#         if not results:
+#             print("No iTunes match found, using YouTube metadata.")
+#             return None
+
+#         track = results[0]
+#         return {
+#             "title": track.get("trackName", title),
+#             "artist": track.get("artistName", artist),
+#             "album": track.get("collectionName", ""),
+#             "year": track.get("releaseDate", "")[:4],
+#             "track_number": str(track.get("trackNumber", "")),
+#             "thumbnail": track.get("artworkUrl100", "").replace("100x100", "600x600"),  # get higher res
+#         }
+
+#     except Exception as e:
+#         print(f"iTunes error: {e}")
+#         return None
+
+
+musicbrainzngs.set_useragent("YTMusicDownloader", "1.0", "your@email.com")
+
+def get_musicbrainz_metadata(title, artist):
     try:
-        query = f"{title} {artist}"
-        r = requests.get(f"https://api.deezer.com/search?q={requests.utils.quote(query)}&limit=1", timeout=10)
-        data = r.json()
-        tracks = data.get("data", [])
-        if not tracks:
-            print("No Deezer match found, using YouTube metadata.")
+        result = musicbrainzngs.search_recordings(
+            recording=title,
+            artist=artist,
+            limit=1
+        )
+
+        recordings = result.get("recording-list", [])
+        if not recordings:
+            print("No MusicBrainz match found, using YouTube metadata.")
             return None
 
-        track = tracks[0]
-        album_id = track["album"]["id"]
-        album_data = requests.get(
-            f"https://api.deezer.com/album/{album_id}",
-            timeout=10
-        ).json()
+        rec = recordings[0]
+        track_title = rec.get("title", title)
+        artist_name = rec["artist-credit"][0]["artist"]["name"] if rec.get("artist-credit") else artist
 
-        year = album_data.get("release_date", "")[:4]
+        release = rec.get("release-list", [{}])[0]
+        album = release.get("title", "")
+        year = release.get("date", "")[:4]
+        track_number = release.get("track-count", "")
+
+        # Get cover art from Cover Art Archive (free, no API key needed)
+        thumbnail = None
+        release_id = release.get("id")
+        if release_id:
+            try:
+                cover_url = f"https://coverartarchive.org/release/{release_id}/front"
+                r = requests.head(cover_url, timeout=5, allow_redirects=True)
+                if r.status_code == 200:
+                    thumbnail = cover_url
+            except:
+                pass
+
         return {
-            "title": track["title"],
-            "artist": track["artist"]["name"],
-            "album": track["album"]["title"],
-            "year": year,  
-            "track_number": "",
-            "thumbnail": track["album"]["cover_xl"],  # high quality cover art
+            "title": track_title,
+            "artist": artist_name,
+            "album": album,
+            "year": year,
+            "track_number": str(track_number),
+            "thumbnail": thumbnail,
         }
+
     except Exception as e:
-        print(f"Deezer error: {e}")
+        print(f"MusicBrainz error: {e}")
         return None
+
+
+# def get_deezer_metadata(title, artist):
+#     try:
+#         query = f"{title} {artist}"
+#         r = requests.get(f"https://api.deezer.com/search?q={requests.utils.quote(query)}&limit=1", timeout=10)
+#         data = r.json()
+#         tracks = data.get("data", [])
+#         if not tracks:
+#             print("No Deezer match found, using YouTube metadata.")
+#             return None
+
+#         track = tracks[0]
+#         album_id = track["album"]["id"]
+#         album_data = requests.get(
+#             f"https://api.deezer.com/album/{album_id}",
+#             timeout=10
+#         ).json()
+
+#         year = album_data.get("release_date", "")[:4]
+#         return {
+#             "title": track["title"],
+#             "artist": track["artist"]["name"],
+#             "album": track["album"]["title"],
+#             "year": year,  
+#             "track_number": "",
+#             "thumbnail": track["album"]["cover_xl"],  # high quality cover art
+#         }
+#     except Exception as e:
+#         print(f"Deezer error: {e}")
+#         return None
 
 def embed_metadata(filepath, meta):
     try:
@@ -116,8 +220,10 @@ def download_music(url, output_dir="downloads"):
                 mp3_path = base + ".mp3"
             else:
                 mp3_path = os.path.join(output_dir, f"{yt_title}.mp3")
-
-            meta = get_deezer_metadata(yt_title, yt_artist) or {
+            # meta = get_ytmusic_metadata(yt_title, yt_artist) or {
+            # meta = get_itunes_metadata(yt_title, yt_artist) or {
+            meta = get_musicbrainz_metadata(yt_title, yt_artist) or {
+            # meta = get_deezer_metadata(yt_title, yt_artist) or {
                 "title": yt_title,
                 "artist": yt_artist,
                 "album": entry.get("album", ""),
